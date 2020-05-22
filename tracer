@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+tracer() {
+  { PS4='\000${BASH_SOURCE}:${FUNCNAME}:${LINENO}: '; set -x; "$@"; } 2>&1 >/dev/null | {
+    # skip the first line
+    IFS= read -r
+
+    local start=${EPOCHREALTIME/,/}
+    local last=$start
+
+    IFS= read -r
+
+    local last_line=$REPLY
+
+    while IFS= read -r; do
+      now=${EPOCHREALTIME/,/}
+      elapsed_line=$((now - last))
+      elapsed_total=
+      last=${EPOCHREALTIME/,/}
+      last_line=$REPLY
+
+      printf '%d.%-4s \e[7m \e[m %s\n' "$((elapsed / 1000000))" "$((elapsed % 1000000))" "$REPLY"
+    done
+
+    # TODO end
+  }
+}
