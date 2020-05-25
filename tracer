@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 tracer() {
-  { PS4='\000${BASH_SOURCE}:${FUNCNAME}:${LINENO}: '; set -x; "$@"; } 2>&1 >/dev/null | {
+  { PS4='\033[0D ${BASH_SOURCE}:${FUNCNAME}:${LINENO}: '; set -x; "$@"; } 2>&1 >/dev/null | {
     # skip the first line
     IFS= read -r
 
@@ -11,17 +11,18 @@ tracer() {
     IFS= read -r
 
     local last_line=$REPLY
+    local elapsed_line
+    local padding
 
     while IFS= read -r; do
-      now=${EPOCHREALTIME/,/}
-      elapsed_line=$((now - last))
-      elapsed_total=
+      elapsed_line=$((${EPOCHREALTIME/,/} - last))
       last=${EPOCHREALTIME/,/}
+      elapsed_line_micro_secs=$((elapsed_line % 1000000))
+      padding=$((6 - ${#elapsed_line_micro_secs}))
+
+      printf '%4d.%0*s%-.*ss \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((6 - ${#elapsed_line_micro_secs}))" 0 "$((4 - padding))" "$elapsed_line_micro_secs" "$last_line"
+
       last_line=$REPLY
-
-      printf '%d.%-4s \e[7m \e[m %s\n' "$((elapsed / 1000000))" "$((elapsed % 1000000))" "$REPLY"
     done
-
-    # TODO end
   }
 }
