@@ -12,17 +12,17 @@ tracer() {
 
     local last_line=$REPLY
     local elapsed_line
-    local padding
 
     while IFS= read -r; do
       elapsed_line=$((${EPOCHREALTIME/,/} - last))
       last=${EPOCHREALTIME/,/}
-      elapsed_line_micro_secs=$((elapsed_line % 1000000))
-      padding=$((6 - ${#elapsed_line_micro_secs}))
 
-      printf '%4d.%0*s%-.*ss \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((6 - ${#elapsed_line_micro_secs}))" 0 "$((4 - padding))" "$elapsed_line_micro_secs" "$last_line"
+      printf '%4d.%04ds \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "$last_line"
 
       last_line=$REPLY
     done
+
+    local elapsed_total=$((last - start))
+    printf '           \e[7m \e[m\n     Total \e[7m \e[m %d.%04d\n' "$((elapsed_total / 1000000))" "$((elapsed_total % 1000000 / 100))"
   }
 }
