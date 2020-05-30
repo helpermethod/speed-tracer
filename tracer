@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 tracer() {
-  { PS4='\033[0D ${BASH_SOURCE}:${FUNCNAME}:${LINENO}: '; set -x; "$@"; } 2>&1 >/dev/null | {
+  local term_width=$(tput cols)
+
+  { PS4='\033[0D ${BASH_SOURCE}:${FUNCNAME:+${FUNCNAME}():}${LINENO}: '; set -x; "$@"; } 2>&1 >/dev/null | {
     # skip the first line
     IFS= read -r
 
@@ -17,6 +19,7 @@ tracer() {
       elapsed_line=$((${EPOCHREALTIME/,/} - last))
       last=${EPOCHREALTIME/,/}
 
+      ((${#last_line} < $term_width)) && echo "y" || echo "n"
       printf '%4d.%04ds \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "$last_line"
 
       last_line=$REPLY
