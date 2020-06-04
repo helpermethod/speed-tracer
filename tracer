@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 tracer() {
-  local term_width=$(tput cols)
-
-  { PS4='\033[0D ${BASH_SOURCE}:${FUNCNAME:+${FUNCNAME}():}${LINENO}: '; set -x; "$@"; } 2>&1 >/dev/null | {
+  local max_line_length=$(($(tput cols) - 20))
+ 
+  { PS4='\e[0D ${BASH_SOURCE}:${FUNCNAME:-<script>}:${LINENO}:\e[m '; set -x; "$@"; } 2>&1 >/dev/null | {
     # skip the first line
     IFS= read -r
 
@@ -19,8 +19,7 @@ tracer() {
       elapsed_line=$((${EPOCHREALTIME/,/} - last))
       last=${EPOCHREALTIME/,/}
 
-      ((${#last_line} < $term_width)) && echo "y" || echo "n"
-      printf '%4d.%04ds \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "$last_line"
+      printf '%4d.%04ds \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "${last_line}"
 
       last_line=$REPLY
     done
@@ -28,4 +27,17 @@ tracer() {
     local elapsed_total=$((last - start))
     printf '           \e[7m \e[m\n     Total \e[7m \e[m %d.%04d\n' "$((elapsed_total / 1000000))" "$((elapsed_total % 1000000 / 100))"
   }
+}
+
+__tracer_print_lines() {
+  local line=$1
+  local max_line_length=$2
+
+  local raw=${last_line:0:$max_line_length}
+
+  while ((${#raw} > max_line_length)); do
+    printf '           \e[7m \e[m %s\n' "${line:0:$max_line_length}"
+
+    line=${line:$max_line_length}
+  done
 }
