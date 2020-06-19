@@ -3,8 +3,7 @@
 tracer() {
   local -r max_line_length=$(($(tput cols) - 13))
 
-  # taken from https://wiki-dev.bash-hackers.org/scripting/debuggingtips#making_xtrace_more_useful
-  { PS4='# ${BASH_SOURCE}:${FUNCNAME:-<script>}:$LINENO: '; set -x; "$@"; } 2>&1 >/dev/null | {
+  { set -x; "$@"; } 2>&1 >/dev/null | {
     # skip the first line
     IFS= read -r
 
