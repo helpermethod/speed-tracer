@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 tracer() {
-  local max_line_length=$(($(tput cols) - 20))
- 
-  { PS4='\e[0D ${BASH_SOURCE}:${FUNCNAME:-<script>}:${LINENO}:\e[m '; set -x; "$@"; } 2>&1 >/dev/null | {
+  local -r max_line_length=$(($(tput cols) - 13))
+
+  # taken from https://wiki-dev.bash-hackers.org/scripting/debuggingtips#making_xtrace_more_useful
+  { PS4='# ${BASH_SOURCE}:${FUNCNAME:-<script>}:$LINENO: '; set -x; "$@"; } 2>&1 >/dev/null | {
     # skip the first line
     IFS= read -r
 
@@ -19,25 +20,40 @@ tracer() {
       elapsed_line=$((${EPOCHREALTIME/,/} - last))
       last=${EPOCHREALTIME/,/}
 
-      printf '%4d.%04ds \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "${last_line}"
+      __tracer_print_first_line "$elapsed_line" "$last_line" "$max_line_length"
+
+      [[ ${last_line:$((max_line_length))} ]] && __tracer_print_remaining_lines "${last_line:$((max_line_length))}" "$max_line_length"
 
       last_line=$REPLY
     done
 
-    local elapsed_total=$((last - start))
-    printf '           \e[7m \e[m\n     Total \e[7m \e[m %d.%04d\n' "$((elapsed_total / 1000000))" "$((elapsed_total % 1000000 / 100))"
+    __tracer_print_summary "$((last - start))"
   }
 }
 
-__tracer_print_lines() {
-  local line=$1
+__tracer_print_first_line() {
+  local -r elapsed_line=$1
+  local -r last_line=$2
+  local -r max_line_length=$3
+
+  printf '%4d.%04ds \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "${last_line:0:$((max_line_length))}"
+}
+
+__tracer_print_remaining_lines() {
+  local remaining=$1
   local max_line_length=$2
 
-  local raw=${last_line:0:$max_line_length}
+  while ((${#remaining} > max_line_length)); do
+    printf '           \e[7m \e[m %s\n' "${remaining:0:$max_line_length}"
 
-  while ((${#raw} > max_line_length)); do
-    printf '           \e[7m \e[m %s\n' "${line:0:$max_line_length}"
-
-    line=${line:$max_line_length}
+    remaining=${remaining:$max_line_length}
   done
+
+  printf '           \e[7m \e[m %s\n' "$remaining"
+}
+
+__tracer_print_summary() {
+  local -r elapsed_total=$1
+
+  printf '           \e[7m \e[m\n     Total \e[7m \e[m %d.%04d\n' "$((elapsed_total / 1000000))" "$((elapsed_total % 1000000 / 100))"
 }
