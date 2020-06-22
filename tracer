@@ -5,11 +5,30 @@ tracer() {
   local -r bar_length=3
   local -r max_line_length=$(($(tput cols) - timestamp_length - bar_length))
 
+  local medium
+  local high
+
+  while :; do
+    case $1 in
+      -m|--medium)
+        medium=${1/,}
+        shift
+        ;;
+      -h|--high)
+        high=${1/,i}
+        shift
+        ;;
+      # TODO handle unknown flags
+      *)
+        break
+    esac
+  done
+
   { set -x; "$@"; } 2>&1 >/dev/null | {
     # skip the first line
     IFS= read -r
 
-    local start=${EPOCHREALTIME/,/}
+    local start=${EPOCHREALTIME/,}
     local last=$start
 
     IFS= read -r
@@ -17,12 +36,15 @@ tracer() {
     local last_line=$REPLY
     local elapsed_line
     local remaining
+    local highlight
 
     while IFS= read -r; do
-      elapsed_line=$((${EPOCHREALTIME/,/} - last))
-      last=${EPOCHREALTIME/,/}
+      elapsed_line=$((${EPOCHREALTIME/,} - last))
+      last=${EPOCHREALTIME/,}
 
-      printf '%4d.%04ds \e[7m \e[m %s\n' "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "${last_line:0:$((max_line_length))}"
+      # TODO set highlight
+
+      printf '%s%4d.%04ds\e[m \e[7m \e[m %s\n' "$highlight" "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "${last_line:0:$((max_line_length))}"
 
       remaining=${last_line:$((max_line_length))}
 
