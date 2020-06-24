@@ -5,26 +5,29 @@ tracer() {
   local -r bar_length=3
   local -r max_line_length=$(($(tput cols) - timestamp_length - bar_length))
 
-  local medium
+  local -r red=$(tput setaf 1)
+  local -r green=$(tput setaf 2)
+  local -r reset=$(tput sgr0)
+  local -r reverse=$(tput rev)
+
+  local high_integral high_fractional
   local high
 
   while :; do
     case $1 in
-      -m|--medium)
-        medium=${1/,}
-        shift
-        ;;
       -h|--high)
-        high=${1/,i}
-        shift
+        IFS=. read -r high_integral high_fractional <<< "$2"
+
+        ((${#high_fractional} < 6)) && printf -v high '%d%d%0*d' "$high_integral" "$high_fractional" "$((6 - ${#high_fractional}))" 0 || high=$high_integral${high_fraction:0:6}
+        shift 2
         ;;
-      # TODO handle unknown flags
       *)
         break
     esac
   done
 
   { set -x; "$@"; } 2>&1 >/dev/null | {
+    shopt -s extglob
     # skip the first line
     IFS= read -r
 
@@ -34,6 +37,7 @@ tracer() {
     IFS= read -r
 
     local last_line=$REPLY
+    local last_line_stripped
     local elapsed_line
     local remaining
     local highlight
@@ -42,18 +46,24 @@ tracer() {
       elapsed_line=$((${EPOCHREALTIME/,} - last))
       last=${EPOCHREALTIME/,}
 
-      # TODO set highlight
+      if [[ -n high ]]; then 
+        ((elapsed_line >= 10#${high})) && highlight=$red || highlight=$green
+      else 
+        highlight=$green
+      fi
 
-      printf '%s%4d.%04ds\e[m \e[7m \e[m %s\n' "$highlight" "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "${last_line:0:$((max_line_length))}"
+      printf '%s%4d.%04ds%s %s %s %s\n' "$highlight" "$((elapsed_line / 1000000))" "$((elapsed_line % 1000000 / 100))" "$reset" "$reverse" "$reset" "${last_line:0:$((max_line_length))}"
 
       remaining=${last_line:$((max_line_length))}
 
       if [[ $remaining ]]; then
         while ((${#remaining} > max_line_length)); do
-          printf '           \e[7m \e[m %s\n' "${remaining:0:$max_line_length}"
+          printf '          %s %s %s %s\n' "$reset" "$reverse" "$reset" "${remaining:0:$max_line_length}"
 
           remaining=${remaining:$max_line_length}
         done
+
+        printf '          %s %s %s %s\n' "$reset" "$reverse" "$reset" "$remaining"
       fi
 
       last_line=$REPLY
@@ -61,6 +71,6 @@ tracer() {
 
     local elapsed_total=$((last - start))
 
-    printf '           \e[7m \e[m\n     Total \e[7m \e[m %d.%04d\n' "$((elapsed_total / 1000000))" "$((elapsed_total % 1000000 / 100))"
+    printf '          %s %s %s\n     Total%s %s %s %d.%04d' "$reset" "$reverse" "$reset" "$reset" "$reverse" "$reset" "$((elapsed_total / 1000000))" "$((elapsed_total % 1000000 / 100))"
   }
 }
